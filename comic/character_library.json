@@ -1,0 +1,98 @@
+{
+  "default_characters": {
+    "kid": {
+      "name": "Max",
+      "age": 6,
+      "base_description": "6-year-old boy with spiky blonde hair that sticks up in all directions",
+      "clothing": "red and black horizontal striped t-shirt, blue jeans, white sneakers",
+      "hair": "short, spiky blonde hair sticking straight up",
+      "features": "round face, big expressive eyes, small nose, wide smile when happy",
+      "personality": "curious, imaginative, mischievous, adventurous",
+      "common_expressions": [
+        "wide-eyed excitement",
+        "mischievous grin",
+        "thoughtful concentration",
+        "surprised shock",
+        "innocent smile"
+      ],
+      "style_notes": "Simple line art, expressive cartoon face, minimal detail, Calvin and Hobbes aesthetic"
+    },
+    "companion": {
+      "name": "Stripes",
+      "type": "stuffed tiger toy",
+      "base_description": "stuffed tiger toy that appears alive and animated, orange with black stripes",
+      "features": "round friendly face, big eyes, small rounded ears, fluffy appearance, child-sized",
+      "personality": "wise, sarcastic, philosophical, loyal, adventurous",
+      "appearance_notes": "appears as a living, breathing companion to the kid, but remains a stuffed toy",
+      "common_expressions": [
+        "knowing smirk",
+        "wise and contemplative",
+        "excited and energetic",
+        "skeptical eyebrow raise",
+        "loyal supportive look"
+      ],
+      "style_notes": "Cartoon tiger, simple stripes pattern, expressive face, Calvin and Hobbes Hobbes aesthetic"
+    },
+    "mom": {
+      "name": "Mom",
+      "age": 35,
+      "base_description": "caring mother with shoulder-length dark hair",
+      "clothing": "casual home wear, often wearing an apron or comfortable clothes",
+      "hair": "shoulder-length dark brown hair, practical style",
+      "features": "kind face, patient expression, gentle eyes",
+      "personality": "patient, loving, sometimes exasperated, practical",
+      "common_expressions": [
+        "patient smile",
+        "hands on hips exasperation",
+        "loving concern",
+        "tired but amused",
+        "gentle authority"
+      ],
+      "style_notes": "Simple adult figure, Calvin and Hobbes parent aesthetic, minimal background detail"
+    },
+    "dad": {
+      "name": "Dad",
+      "age": 37,
+      "base_description": "father with glasses and short dark hair",
+      "clothing": "casual clothes, often wearing polo shirt and khakis",
+      "hair": "short dark hair, slightly receding",
+      "features": "wears glasses, kind but firm expression",
+      "personality": "logical, patient, enjoys teaching moments, slightly sarcastic",
+      "common_expressions": [
+        "patient explanation",
+        "knowing smirk",
+        "tired from work",
+        "proud smile",
+        "amused tolerance"
+      ],
+      "style_notes": "Simple adult male figure, glasses prominent, Calvin and Hobbes parent aesthetic"
+    }
+  },
+  "style_guide": {
+    "art_style": "Calvin and Hobbes",
+    "color_palette": "black and white line art with minimal shading",
+    "line_work": "clean, expressive lines with varied thickness for emphasis",
+    "backgrounds": "simple, minimal detail - suggestion of setting rather than full detail",
+    "character_emphasis": "characters are detailed and expressive, backgrounds are sparse",
+    "panel_composition": "wide horizontal format, dynamic angles for action, clear readable layouts",
+    "expressions": "highly expressive faces with exaggerated emotions for comic effect",
+    "action_lines": "motion lines and effects for movement and emphasis",
+    "speech_bubbles": "classic round speech bubbles with tails pointing to speakers",
+    "fonts": "hand-drawn style lettering, all caps for emphasis, varied sizes for volume"
+  },
+  "scene_templates": {
+    "bedroom": "Simple bedroom setting with bed, desk, minimal furniture details in background",
+    "backyard": "Outdoor setting with grass, maybe a tree or fence, sky with simple clouds",
+    "school": "Classroom with desk, chalkboard visible but minimal detail",
+    "kitchen": "Kitchen table and chairs, simple cabinet outlines in background",
+    "living_room": "Couch, maybe TV or bookshelf, simple home interior",
+    "outdoor_adventure": "Natural setting - woods, hills, or open field with minimal background",
+    "imaginary_world": "Fantastical setting matching the kid's imagination - space, prehistoric, fantasy, etc."
+  },
+  "prompt_templates": {
+    "character_intro": "Black and white comic strip panel in Calvin and Hobbes style. {character_description} {action} in {setting}. Simple line art, expressive face with {expression}, minimal background detail. Wide horizontal composition. Hand-drawn aesthetic, kid-friendly.",
+    "action_panel": "Black and white comic strip panel in Calvin and Hobbes style. {character_description} {action_description}. {motion_details}. Simple line art, dynamic composition, minimal shading. Hand-drawn aesthetic.",
+    "dialogue_panel": "Black and white comic strip panel in Calvin and Hobbes style. {character_description} {pose} while {action}. {expression} expression. {setting_detail}. Simple line art, clear composition for dialogue, minimal background. Hand-drawn aesthetic.",
+    "punchline_panel": "Black and white comic strip panel in Calvin and Hobbes style. {character_description} with {expression} expression {action}. {composition_note}. Simple line art, clear focal point, minimal background. Hand-drawn aesthetic, kid-friendly humor."
+  }
+}
