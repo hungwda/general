@@ -13,14 +13,38 @@ An agentic system that creates kid-friendly comic strips in **Calvin and Hobbes*
 
 ## Architecture
 
-The system uses a **multi-agent architecture** with specialized agents:
+The system uses **Google ADK (Agent Development Kit)** with a LoopAgent workflow:
 
-1. **Story Planner Agent** - Transforms user prompts into structured comic narratives
-2. **Character Consistency Manager** - Maintains consistent character appearances
-3. **Scene Description Agent** - Generates detailed image prompts
-4. **Image Generation Agent** - Creates panels using Gemini Imagen API
-5. **Dialogue Agent** - Adds speech bubbles and text overlays
-6. **Comic Assembler Agent** - Combines panels into final comic strip
+### ADK Agents
+
+1. **Story Planner Agent** (`LlmAgent`) - Transforms user prompts into structured comic narratives
+   - Model: `gemini-2.0-flash-exp`
+   - Output: Saves story plan to state with key `story_plan`
+
+2. **Scene Description Agent** (`LlmAgent`) - Generates detailed image prompts
+   - Model: `gemini-2.0-flash-exp`
+   - Reads: `story_plan` from state
+   - Output: Saves scene prompts to state with key `scene_prompts`
+
+3. **Image Coordinator Agent** (`LlmAgent`) - Coordinates image generation
+   - Model: `gemini-2.0-flash-exp`
+   - Reads: `scene_prompts` from state
+   - Output: Saves generation info with key `generated_images`
+
+### Workflow Orchestration
+
+```python
+comic_workflow_agent = LoopAgent(
+    name="comic_strip_generator",
+    sub_agents=[
+        story_planner_agent,
+        scene_describer_agent,
+        image_coordinator_agent,
+    ],
+)
+```
+
+The LoopAgent executes agents sequentially, passing state between them. After the workflow completes, actual images are generated using Gemini's Imagen API and assembled into the final comic strip.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed system design.
 
@@ -84,21 +108,28 @@ python main.py "Space exploration adventure" --output-dir ./my_comics
 ### Using as a Library
 
 ```python
-from orchestrator import ComicStripOrchestrator
+from google.adk.runners import Runner
+from comic_agents import root_agent
+from image_generation_tool import ImageGenerationTool
 
-# Initialize orchestrator
-orchestrator = ComicStripOrchestrator(api_key="your-api-key")
-
-# Generate comic
-comic = orchestrator.generate_comic(
-    user_prompt="A kid builds a cardboard spaceship",
-    add_title=True,
-    export_pdf=True
+# Initialize runner
+runner = Runner(
+    agent=root_agent,
+    api_key="your-api-key"
 )
 
-# Access results
-print(f"Comic saved to: {comic.final_image_path}")
-print(f"Story: {comic.story_plan.summary}")
+# Run workflow
+result = runner.run(user_prompt="A kid builds a cardboard spaceship")
+
+# Extract results
+state = result.state
+story_plan = state.get('story_plan')
+scene_prompts = state.get('scene_prompts')
+
+# Generate actual images
+img_tool = ImageGenerationTool(api_key="your-api-key")
+generation_result = img_tool.generate_panel_images(scene_prompts, "session_id")
+final_comic = img_tool.assemble_comic(generation_result['generated_panels'], story_plan, "session_id")
 ```
 
 ## Example Prompts
@@ -187,20 +218,16 @@ GOOGLE_API_KEY=your-key-here
 
 ```
 comic/
-├── agents/                    # Agent implementations
-│   ├── story_planner.py
-│   ├── character_manager.py
-│   ├── scene_describer.py
-│   ├── image_generator.py
-│   ├── dialogue_agent.py
-│   └── comic_assembler.py
-├── tools/                     # Helper tools
+├── instructions/              # Agent instruction files
+│   ├── story_planner_instruction.txt
+│   ├── scene_describer_instruction.txt
+│   └── image_coordinator_instruction.txt
 ├── output/                    # Generated comics
+├── comic_agents.py            # ADK agent definitions (LlmAgent, LoopAgent)
+├── image_generation_tool.py   # Gemini Imagen API wrapper
+├── util.py                    # Utility functions
+├── main.py                    # CLI entry point with ADK Runner
 ├── character_library.json     # Character definitions
-├── config.py                  # Configuration
-├── models.py                  # Data models
-├── orchestrator.py            # Main orchestrator
-├── main.py                    # CLI entry point
 └── requirements.txt           # Dependencies
 ```
 
