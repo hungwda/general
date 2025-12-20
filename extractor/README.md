@@ -7,6 +7,11 @@ A privacy-first, local pipeline for extracting medical data from 100+ documents 
 - Process PDFs and images (JPG, PNG, BMP, TIFF)
 - Local processing using Ollama vision models
 - Privacy-first: No data sent to external APIs
+- Automatic PII redaction (HIPAA-compliant)
+  - Redacts names, DOB, IDs, contact info
+  - Ages over 89 (HIPAA requirement)
+  - Configurable and selective redaction
+  - Detailed redaction logging
 - Structured markdown output with no bold/italic formatting
 - Support for tables and organized data
 - Batch processing of multiple documents
@@ -101,8 +106,10 @@ Options:
   --dpi DPI                    DPI for PDF conversion (default: 200)
   --prompt TEXT                Custom extraction prompt
   --no-index                   Skip index file creation
-  --no-summary                Skip summary file creation
-  --ollama-host URL           Custom Ollama host URL
+  --no-summary                 Skip summary file creation
+  --ollama-host URL            Custom Ollama host URL
+  --no-redact                  Disable automatic PII redaction
+  --redaction-marker TEXT      Custom redaction marker (default: [REDACTED])
 ```
 
 ### Python API
@@ -150,6 +157,76 @@ result = extractor.extract_from_file(
     file_path="report.pdf",
     custom_prompt=custom_prompt
 )
+```
+
+### PII Redaction
+
+Automatic PII redaction is enabled by default for privacy and HIPAA compliance.
+
+#### Disable Redaction
+
+```bash
+# CLI: Disable redaction
+python main.py --file report.pdf --no-redact
+
+# Python API: Disable redaction
+extractor = MedicalDataExtractor(enable_redaction=False)
+```
+
+#### Customize Redaction Marker
+
+```bash
+# CLI: Custom marker
+python main.py --file report.pdf --redaction-marker "[###]"
+
+# Python API: Custom marker
+extractor = MedicalDataExtractor(redaction_marker="[PRIVATE]")
+```
+
+#### Selective Redaction
+
+```python
+from pii_redactor import PIIRedactor
+
+redactor = PIIRedactor()
+
+# Redact only names and contact info
+redacted_text = redactor.redact_all(
+    text,
+    include={'names', 'contact'}
+)
+
+# Redact everything except IDs
+redacted_text = redactor.redact_all(
+    text,
+    exclude={'ids'}
+)
+```
+
+#### PII Types Redacted
+
+- `names`: Person names
+- `dob`: Dates of birth
+- `ids`: Patient IDs, MRNs, SSNs, driver's licenses, insurance IDs
+- `contact`: Phone numbers, email addresses, physical addresses
+- `age_over_89`: Ages over 89 (HIPAA requirement)
+
+#### Standalone Redaction Tool
+
+Redact existing markdown files without re-extraction:
+
+```bash
+# Redact a single file
+python redact_standalone.py --file document.md
+
+# Redact all files in directory
+python redact_standalone.py --directory ./output
+
+# Selective redaction
+python redact_standalone.py --file doc.md --include names dob
+
+# Save redaction log
+python redact_standalone.py --file doc.md --log redactions.json
 ```
 
 ## Output Format
@@ -201,6 +278,10 @@ This tool is designed with privacy as a priority:
 - Uses local Ollama models running on your hardware
 - No internet connection required after model download
 - All extracted data stays on your local filesystem
+- Automatic PII redaction enabled by default
+  - Removes names, DOB, IDs, contact information
+  - HIPAA-compliant redaction (ages >89)
+  - Detailed logging of redacted items
 - HIPAA-compliant when used in appropriate environment
 
 ## Performance Tips
@@ -234,9 +315,17 @@ extractor/
 ├── document_processor.py  # PDF/image processing
 ├── llm_extractor.py       # LLM-based extraction
 ├── output_handler.py      # Output file management
+├── pii_redactor.py        # PII redaction engine
+├── redact_standalone.py   # Standalone redaction tool
+├── config.py              # Configuration settings
 ├── example_usage.py       # Usage examples
+├── test_installation.py   # Installation verification
+├── quick_start.sh         # Automated setup script
 ├── requirements.txt       # Python dependencies
-└── README.md             # This file
+├── setup.py               # Package installation
+├── README.md              # This file
+├── INSTALL.md             # Installation guide
+└── LICENSE                # License file
 ```
 
 ## Troubleshooting

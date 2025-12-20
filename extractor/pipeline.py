@@ -9,6 +9,7 @@ from tqdm import tqdm
 from document_processor import DocumentProcessor
 from llm_extractor import LLMExtractor
 from output_handler import OutputHandler
+from pii_redactor import PIIRedactor
 
 
 class MedicalDataExtractor:
@@ -22,7 +23,9 @@ class MedicalDataExtractor:
         model: str = "llava:latest",
         output_dir: str = "output",
         dpi: int = 200,
-        ollama_host: Optional[str] = None
+        ollama_host: Optional[str] = None,
+        enable_redaction: bool = True,
+        redaction_marker: str = "[REDACTED]"
     ):
         """
         Initialize medical data extraction pipeline.
@@ -32,17 +35,28 @@ class MedicalDataExtractor:
             output_dir: Directory for output files (default: 'output')
             dpi: DPI for PDF to image conversion (default: 200)
             ollama_host: Optional Ollama host URL
+            enable_redaction: Enable automatic PII redaction (default: True)
+            redaction_marker: Text to replace PII with (default: [REDACTED])
         """
         self.document_processor = DocumentProcessor(dpi=dpi)
         self.llm_extractor = LLMExtractor(model=model, ollama_host=ollama_host)
         self.output_handler = OutputHandler(output_dir=output_dir)
+        self.enable_redaction = enable_redaction
+        self.pii_redactor = PIIRedactor(
+            redaction_marker=redaction_marker,
+            preserve_structure=True,
+            log_redactions=True
+        )
 
     def extract_from_file(
         self,
         file_path: Union[str, Path],
         custom_prompt: Optional[str] = None,
         save_output: bool = True,
-        output_filename: Optional[str] = None
+        output_filename: Optional[str] = None,
+        redact_pii: Optional[bool] = None,
+        redact_include: Optional[set] = None,
+        redact_exclude: Optional[set] = None
     ) -> Dict:
         """
         Extract medical data from a single file.
@@ -52,6 +66,9 @@ class MedicalDataExtractor:
             custom_prompt: Optional custom extraction prompt
             save_output: Whether to save output to file (default: True)
             output_filename: Optional custom output filename
+            redact_pii: Override global redaction setting (None = use global)
+            redact_include: Specific PII types to redact (None = all)
+            redact_exclude: PII types to skip redacting
 
         Returns:
             Dictionary containing extraction results
@@ -95,6 +112,20 @@ class MedicalDataExtractor:
                 output_filename
             )
 
+        # Step 5: Redact PII if enabled
+        redaction_count = 0
+        should_redact = redact_pii if redact_pii is not None else self.enable_redaction
+
+        if should_redact and output_path:
+            print("Step 5: Redacting PII from extracted data...")
+            output_path, redaction_count = self.pii_redactor.redact_file(
+                output_path,
+                output_path,
+                include=redact_include,
+                exclude=redact_exclude
+            )
+            print(f"Redacted {redaction_count} PII items")
+
         print(f"Extraction complete for {file_path.name}")
 
         return {
@@ -102,7 +133,9 @@ class MedicalDataExtractor:
             'file': str(file_path),
             'output_file': str(output_path) if output_path else None,
             'content': cleaned_text,
-            'num_pages': len(images)
+            'num_pages': len(images),
+            'pii_redacted': should_redact,
+            'redaction_count': redaction_count
         }
 
     def extract_from_directory(

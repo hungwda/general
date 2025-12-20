@@ -33,6 +33,17 @@ class Config:
     CREATE_INDEX = True
     CREATE_SUMMARY = True
 
+    # PII Redaction settings
+    ENABLE_REDACTION = True
+    REDACTION_MARKER = "[REDACTED]"
+    REDACTION_TYPES = {
+        'names',        # Person names
+        'dob',          # Dates of birth
+        'ids',          # Patient IDs, MRNs, SSNs, etc.
+        'contact',      # Phone, email, addresses
+        'age_over_89'   # Ages over 89 (HIPAA requirement)
+    }
+
     # System prompt for extraction
     SYSTEM_PROMPT = """You are a medical data extraction assistant. Your task is to extract all relevant medical information from documents and format them in clean markdown.
 

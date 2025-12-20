@@ -106,20 +106,37 @@ Examples:
         help='Ollama host URL (optional, defaults to local)'
     )
 
+    # PII Redaction options
+    parser.add_argument(
+        '--no-redact',
+        action='store_true',
+        help='Disable automatic PII redaction (enabled by default)'
+    )
+
+    parser.add_argument(
+        '--redaction-marker',
+        type=str,
+        default='[REDACTED]',
+        help='Text to replace PII with (default: [REDACTED])'
+    )
+
     args = parser.parse_args()
 
     # Initialize the extractor
     print("\nInitializing Medical Data Extractor...")
     print(f"Model: {args.model}")
     print(f"Output Directory: {args.output}")
-    print(f"DPI: {args.dpi}\n")
+    print(f"DPI: {args.dpi}")
+    print(f"PII Redaction: {'Disabled' if args.no_redact else 'Enabled'}\n")
 
     try:
         extractor = MedicalDataExtractor(
             model=args.model,
             output_dir=args.output,
             dpi=args.dpi,
-            ollama_host=args.ollama_host
+            ollama_host=args.ollama_host,
+            enable_redaction=not args.no_redact,
+            redaction_marker=args.redaction_marker
         )
 
         # Process based on input type
@@ -135,6 +152,8 @@ Examples:
             if result['success']:
                 print(f"\nExtraction successful!")
                 print(f"Output saved to: {result['output_file']}")
+                if result.get('pii_redacted'):
+                    print(f"PII items redacted: {result.get('redaction_count', 0)}")
                 return 0
             else:
                 print(f"\nExtraction failed: {result.get('error', 'Unknown error')}")

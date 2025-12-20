@@ -187,6 +187,80 @@ def example_high_quality_extraction():
         print(f"Output: {result['output_file']}")
 
 
+def example_pii_redaction():
+    """Example: Extract with PII redaction."""
+    print("\n" + "="*60)
+    print("Example 7: PII Redaction")
+    print("="*60)
+
+    # Extract with automatic redaction (default)
+    extractor = MedicalDataExtractor(
+        enable_redaction=True,
+        redaction_marker="[REDACTED]"
+    )
+
+    result = extractor.extract_from_file(
+        file_path="path/to/medical_report.pdf",
+        save_output=True
+    )
+
+    if result['success']:
+        print(f"Extraction complete: {result['output_file']}")
+        print(f"PII items redacted: {result['redaction_count']}")
+
+
+def example_selective_redaction():
+    """Example: Redact only specific PII types."""
+    print("\n" + "="*60)
+    print("Example 8: Selective PII Redaction")
+    print("="*60)
+
+    from pii_redactor import PIIRedactor
+
+    # Create redactor
+    redactor = PIIRedactor(redaction_marker="[###]")
+
+    # Read a markdown file
+    with open("path/to/extracted_document.md", 'r') as f:
+        content = f.read()
+
+    # Redact only names and contact info (keep IDs and DOB)
+    redacted = redactor.redact_all(
+        content,
+        include={'names', 'contact'},
+        exclude={'ids', 'dob'}
+    )
+
+    # Save redacted version
+    with open("path/to/redacted_document.md", 'w') as f:
+        f.write(redacted)
+
+    # Get redaction summary
+    summary = redactor.get_redaction_summary()
+    print(f"Redacted {summary['total_redactions']} items")
+    print(f"By type: {summary['by_type']}")
+
+
+def example_no_redaction():
+    """Example: Extract without PII redaction."""
+    print("\n" + "="*60)
+    print("Example 9: Disable PII Redaction")
+    print("="*60)
+
+    # Disable redaction for research or development purposes
+    extractor = MedicalDataExtractor(
+        enable_redaction=False  # Keep all original data
+    )
+
+    result = extractor.extract_from_file(
+        file_path="path/to/medical_report.pdf",
+        save_output=True
+    )
+
+    print("Extraction complete without redaction")
+    print("WARNING: Output contains unredacted PII!")
+
+
 if __name__ == '__main__':
     print("\nMedical Data Extractor - Example Usage\n")
 
@@ -198,6 +272,9 @@ if __name__ == '__main__':
     # example_file_list()
     # example_different_models()
     # example_high_quality_extraction()
+    # example_pii_redaction()
+    # example_selective_redaction()
+    # example_no_redaction()
 
     print("\n\nTo run examples, uncomment the function calls in example_usage.py")
     print("Make sure to update the file paths to point to your actual medical documents.")
