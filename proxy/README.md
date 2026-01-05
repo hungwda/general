@@ -2,11 +2,14 @@
 
 This solution provides a custom LiteLLM proxy setup that allows you to use a `custom_max_token` parameter in requests, which will be used to set the `max_tokens` value sent to LLM providers.
 
+**IMPORTANT**: `custom_max_token` **ALWAYS** overrides `max_tokens`, even if `max_tokens` is specified in the request. This ensures consistent token control.
+
 ## Overview
 
 The solution uses LiteLLM's custom callback system with the `async_pre_call_hook` to intercept requests before they reach the LLM provider. This allows you to:
 
 - Use `custom_max_token` parameter in requests to control `max_tokens`
+- Override any `max_tokens` value with `custom_max_token` (takes precedence)
 - Set different default `custom_max_token` based on the model
 - Cap `custom_max_token` to prevent excessive costs
 - Apply conditional logic based on user, model, or other criteria
@@ -97,7 +100,10 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 ```
 
-**Note**: If `custom_max_token` is not specified, the handler will use the default value from `CUSTOM_MAX_TOKEN_DEFAULT` environment variable.
+**Important Notes**:
+- `custom_max_token` **ALWAYS** overrides `max_tokens`, even if both are specified
+- If `custom_max_token` is not specified, the handler will use the default value from `CUSTOM_MAX_TOKEN_DEFAULT` environment variable
+- Any `max_tokens` value in the request will be replaced by `custom_max_token`
 
 #### Using cURL
 
@@ -125,7 +131,8 @@ Simple handler that reads `custom_max_token` from requests and uses it to set `m
 **Behavior:**
 - Reads `custom_max_token` from request data
 - If not provided, uses the configured default value
-- Sets `max_tokens` with the custom_max_token value
+- **ALWAYS overrides** `max_tokens` with the `custom_max_token` value (takes precedence)
+- Even if `max_tokens` is specified in the request, it will be replaced
 - Only processes completion requests (ignores embeddings, etc.)
 
 ### ConditionalMaxTokensModifier
@@ -135,6 +142,7 @@ Advanced handler with conditional logic and model-specific defaults.
 **Features:**
 - Model-specific default `custom_max_token` values (different for GPT-4, Claude, etc.)
 - Reads `custom_max_token` from request or uses model-specific default
+- **ALWAYS overrides** any `max_tokens` value in the request
 - Caps final value at maximum limit to prevent excessive costs
 - Configurable per-model defaults
 

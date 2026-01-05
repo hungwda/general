@@ -2,6 +2,9 @@
 Custom LiteLLM Proxy Handler for custom_max_token
 This handler intercepts requests before they're sent to the LLM provider
 and uses the custom_max_token parameter to set max_tokens.
+
+IMPORTANT: custom_max_token ALWAYS overrides max_tokens, even if max_tokens
+is specified in the request. This ensures consistent token control.
 """
 
 from litellm.integrations.custom_logger import CustomLogger
@@ -13,6 +16,9 @@ import os
 class MaxTokensModifier(CustomLogger):
     """
     Custom handler that reads custom_max_token from requests and sets max_tokens.
+
+    IMPORTANT: custom_max_token ALWAYS overrides any max_tokens value in the request.
+    If custom_max_token is not provided, uses the configured default.
 
     You can configure the default custom_max_token value via:
     1. Environment variable: CUSTOM_MAX_TOKEN_DEFAULT
@@ -49,6 +55,9 @@ class MaxTokensModifier(CustomLogger):
         Hook called before making LLM API calls.
         Reads custom_max_token from request and sets max_tokens.
 
+        IMPORTANT: custom_max_token ALWAYS overrides max_tokens, even if max_tokens
+        is already specified in the request. This ensures consistent token control.
+
         Args:
             user_api_key_dict: User authentication information
             cache: Cache instance
@@ -64,11 +73,15 @@ class MaxTokensModifier(CustomLogger):
             custom_max_token = data.pop("custom_max_token", self.default_custom_max_token)
             original_max_tokens = data.get("max_tokens")
 
-            # Set max_tokens from custom_max_token
+            # ALWAYS override max_tokens with custom_max_token value
+            # This ensures custom_max_token takes precedence over any existing max_tokens
             data["max_tokens"] = custom_max_token
 
             print(f"Applied custom_max_token: {custom_max_token}")
-            print(f"Original max_tokens: {original_max_tokens} -> New max_tokens: {custom_max_token}")
+            if original_max_tokens:
+                print(f"Overrode existing max_tokens: {original_max_tokens} -> {custom_max_token}")
+            else:
+                print(f"Set max_tokens from custom_max_token: {custom_max_token}")
             print(f"Request data: model={data.get('model')}, max_tokens={data.get('max_tokens')}")
 
         return data
@@ -78,6 +91,9 @@ class MaxTokensModifier(CustomLogger):
 class ConditionalMaxTokensModifier(CustomLogger):
     """
     Advanced handler that reads custom_max_token and applies conditional logic.
+
+    IMPORTANT: custom_max_token ALWAYS overrides any max_tokens value in the request.
+
     Examples:
     - Different defaults for different models
     - Cap custom_max_token to prevent excessive values
@@ -113,6 +129,9 @@ class ConditionalMaxTokensModifier(CustomLogger):
     ):
         """
         Conditionally process custom_max_token based on model and constraints.
+
+        IMPORTANT: custom_max_token ALWAYS overrides max_tokens, even if max_tokens
+        is already specified in the request.
         """
         if call_type not in ["completion", "text_completion"]:
             return data
@@ -134,10 +153,13 @@ class ConditionalMaxTokensModifier(CustomLogger):
         # Strategy 3: Cap at max_allowed to prevent excessive values
         final_max_tokens = min(custom_max_token, self.max_allowed_tokens)
 
+        # ALWAYS override max_tokens with the final value
+        # This ensures custom_max_token takes precedence over any existing max_tokens
         data["max_tokens"] = final_max_tokens
 
+        if original_max_tokens and original_max_tokens != final_max_tokens:
+            print(f"ConditionalMaxTokensModifier: Overrode max_tokens {original_max_tokens} with {final_max_tokens}")
         print(f"ConditionalMaxTokensModifier: model={model}, "
-              f"custom_max_token={custom_max_token}, final_max_tokens={final_max_tokens}, "
-              f"original_max_tokens={original_max_tokens}")
+              f"custom_max_token={custom_max_token}, final_max_tokens={final_max_tokens}")
 
         return data

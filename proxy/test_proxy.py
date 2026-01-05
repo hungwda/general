@@ -80,6 +80,27 @@ def test_custom_max_token():
     except Exception as e:
         print(f"✗ Test 3 failed: {e}")
 
+    # Test 4: Request with BOTH max_tokens AND custom_max_token
+    print("\nTest 4: Sending request with BOTH max_tokens=5000 AND custom_max_token=200")
+    print("Expected: custom_max_token (200) should OVERRIDE max_tokens (5000)")
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": "Say 'Override test' and nothing else."}
+            ],
+            max_tokens=5000,  # This should be overridden
+            extra_body={"custom_max_token": 200}  # This should take precedence
+        )
+
+        print(f"Response: {response.choices[0].message.content}")
+        print(f"Usage: {response.usage}")
+        print("✓ Test 4 passed - custom_max_token successfully overrode max_tokens")
+        print("  Check proxy logs to confirm max_tokens was replaced with 200")
+    except Exception as e:
+        print(f"✗ Test 4 failed: {e}")
+
 
 def test_different_models():
     """
