@@ -86,6 +86,30 @@ class MaxTokensModifier(CustomLogger):
 
         return data
 
+    async def async_log_pre_api_call(self, model, messages, kwargs):
+        """
+        Logging hook called before API call is made.
+        This is called AFTER async_pre_call_hook, so it logs the final request.
+
+        Use this for:
+        - Request tracking/analytics
+        - Monitoring token usage predictions
+        - Debugging
+        - Audit logging
+
+        Args:
+            model: Model being called
+            messages: Messages being sent
+            kwargs: All request parameters (including max_tokens after modification)
+        """
+        max_tokens = kwargs.get("max_tokens", "not set")
+        message_count = len(messages) if messages else 0
+
+        print(f"[PRE-API-CALL LOG] Model: {model}")
+        print(f"[PRE-API-CALL LOG] Max tokens: {max_tokens}")
+        print(f"[PRE-API-CALL LOG] Message count: {message_count}")
+        print(f"[PRE-API-CALL LOG] Temperature: {kwargs.get('temperature', 'default')}")
+
 
 # Example: Custom handler with different strategies
 class ConditionalMaxTokensModifier(CustomLogger):
@@ -163,3 +187,110 @@ class ConditionalMaxTokensModifier(CustomLogger):
               f"custom_max_token={custom_max_token}, final_max_tokens={final_max_tokens}")
 
         return data
+
+    async def async_log_pre_api_call(self, model, messages, kwargs):
+        """
+        Logging hook called before API call is made.
+        Logs the final request parameters after all modifications.
+
+        Args:
+            model: Model being called
+            messages: Messages being sent
+            kwargs: All request parameters
+        """
+        max_tokens = kwargs.get("max_tokens", "not set")
+        message_count = len(messages) if messages else 0
+
+        print(f"[CONDITIONAL PRE-API-CALL LOG] Model: {model}")
+        print(f"[CONDITIONAL PRE-API-CALL LOG] Final max_tokens: {max_tokens}")
+        print(f"[CONDITIONAL PRE-API-CALL LOG] Messages: {message_count}")
+
+
+# Example: Handler with comprehensive logging and tracking
+class MaxTokensModifierWithLogging(CustomLogger):
+    """
+    Enhanced handler that combines custom_max_token processing with comprehensive logging.
+
+    This handler demonstrates using multiple hooks together:
+    - async_pre_call_hook: Modify the request
+    - async_log_pre_api_call: Log the modified request
+    - async_log_success_event: Log successful completions
+    - async_log_failure_event: Log failures
+    """
+
+    def __init__(self, default_custom_max_token: Optional[int] = None):
+        super().__init__()
+        self.default_custom_max_token = int(os.getenv("CUSTOM_MAX_TOKEN_DEFAULT", default_custom_max_token or 2048))
+        self.request_counter = 0
+        print(f"MaxTokensModifierWithLogging initialized")
+
+    async def async_pre_call_hook(
+        self,
+        user_api_key_dict: UserAPIKeyAuth,
+        cache: DualCache,
+        data: dict,
+        call_type: Literal[
+            "completion",
+            "text_completion",
+            "embeddings",
+            "image_generation",
+            "moderation",
+            "audio_transcription"
+        ]
+    ):
+        """Modify request - apply custom_max_token"""
+        if call_type in ["completion", "text_completion"]:
+            custom_max_token = data.pop("custom_max_token", self.default_custom_max_token)
+            data["max_tokens"] = custom_max_token
+
+            # Track this request
+            self.request_counter += 1
+            data["_request_id"] = self.request_counter  # Add tracking ID
+
+            print(f"[REQUEST #{self.request_counter}] Applied custom_max_token: {custom_max_token}")
+
+        return data
+
+    async def async_log_pre_api_call(self, model, messages, kwargs):
+        """Log request details before sending to LLM"""
+        request_id = kwargs.get("_request_id", "unknown")
+        max_tokens = kwargs.get("max_tokens", "not set")
+
+        # Calculate estimated tokens in messages (rough estimate)
+        total_chars = sum(len(str(msg)) for msg in messages) if messages else 0
+        estimated_input_tokens = total_chars // 4  # Rough estimate: 4 chars per token
+
+        print(f"[PRE-API-CALL #{request_id}]")
+        print(f"  Model: {model}")
+        print(f"  Max tokens: {max_tokens}")
+        print(f"  Estimated input tokens: ~{estimated_input_tokens}")
+        print(f"  Estimated total tokens: ~{estimated_input_tokens + int(max_tokens) if isinstance(max_tokens, (int, str)) and str(max_tokens).isdigit() else 'unknown'}")
+
+    async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
+        """Log successful API calls"""
+        duration = end_time - start_time
+        request_id = kwargs.get("_request_id", "unknown")
+        model = kwargs.get("model", "unknown")
+
+        # Extract usage info from response
+        usage = getattr(response_obj, 'usage', None)
+        if usage:
+            prompt_tokens = getattr(usage, 'prompt_tokens', 0)
+            completion_tokens = getattr(usage, 'completion_tokens', 0)
+            total_tokens = getattr(usage, 'total_tokens', 0)
+
+            print(f"[SUCCESS #{request_id}] Model: {model}")
+            print(f"  Duration: {duration:.2f}s")
+            print(f"  Tokens - Prompt: {prompt_tokens}, Completion: {completion_tokens}, Total: {total_tokens}")
+        else:
+            print(f"[SUCCESS #{request_id}] Model: {model}, Duration: {duration:.2f}s")
+
+    async def async_log_failure_event(self, kwargs, response_obj, start_time, end_time):
+        """Log failed API calls"""
+        duration = end_time - start_time
+        request_id = kwargs.get("_request_id", "unknown")
+        model = kwargs.get("model", "unknown")
+
+        print(f"[FAILURE #{request_id}] Model: {model}")
+        print(f"  Duration: {duration:.2f}s")
+        print(f"  Error: {response_obj}")
