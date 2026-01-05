@@ -1,0 +1,58 @@
+# LiteLLM Proxy Configuration
+# This configuration sets up the LiteLLM proxy with custom max_tokens modification
+
+model_list:
+  - model_name: gpt-3.5-turbo
+    litellm_params:
+      model: gpt-3.5-turbo
+      api_key: os.environ/OPENAI_API_KEY
+      # Note: max_tokens here is a default, but will be overridden by custom handler
+
+  - model_name: gpt-4
+    litellm_params:
+      model: gpt-4
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: claude-3-sonnet
+    litellm_params:
+      model: claude-3-sonnet-20240229
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: claude-3-opus
+    litellm_params:
+      model: claude-3-opus-20240229
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+# LiteLLM Settings
+litellm_settings:
+  # Enable custom callbacks
+  callbacks:
+    - custom_callbacks.custom_handler.MaxTokensModifier
+    # Alternative: Use the conditional handler instead
+    # - custom_callbacks.custom_handler.ConditionalMaxTokensModifier
+
+  # Uncomment to set a default max_tokens for all requests
+  # max_tokens: 2048
+
+  # Success callback (optional - for logging)
+  success_callback: []
+
+  # Failure callback (optional - for logging)
+  failure_callback: []
+
+# General Settings
+general_settings:
+  # Master key for admin operations
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+  # Database URL (optional - for persistence)
+  # database_url: "postgresql://user:password@localhost/litellm"
+
+  # Store model in database (optional)
+  # store_model_in_db: true
+
+# Router Settings (optional)
+# router_settings:
+#   routing_strategy: simple-shuffle
+#   model_group_alias:
+#     gpt-3.5-turbo: gpt-3.5-turbo
