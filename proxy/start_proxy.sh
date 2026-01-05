@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Start LiteLLM Proxy with custom max_tokens handler
+# Start LiteLLM Proxy with custom_max_token handler
 
 # Load environment variables from .env file
 if [ -f .env ]; then
@@ -11,11 +11,11 @@ else
     echo "Please copy .env.example to .env and configure your API keys."
 fi
 
-# Set default max tokens if not set
-export MAX_TOKENS_OVERRIDE=${MAX_TOKENS_OVERRIDE:-2048}
+# Set default custom_max_token if not set
+export CUSTOM_MAX_TOKEN_DEFAULT=${CUSTOM_MAX_TOKEN_DEFAULT:-2048}
 
 echo "Starting LiteLLM Proxy..."
-echo "Max tokens override: $MAX_TOKENS_OVERRIDE"
+echo "Custom max token default: $CUSTOM_MAX_TOKEN_DEFAULT"
 
 # Start the proxy server
 # --config: path to configuration file

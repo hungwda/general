@@ -1,7 +1,7 @@
 """
-Custom LiteLLM Proxy Handler for Modifying max_tokens
+Custom LiteLLM Proxy Handler for custom_max_token
 This handler intercepts requests before they're sent to the LLM provider
-and modifies the max_tokens parameter.
+and uses the custom_max_token parameter to set max_tokens.
 """
 
 from litellm.integrations.custom_logger import CustomLogger
@@ -12,24 +12,24 @@ import os
 
 class MaxTokensModifier(CustomLogger):
     """
-    Custom handler that modifies max_tokens in requests before sending to LLM providers.
+    Custom handler that reads custom_max_token from requests and sets max_tokens.
 
-    You can configure the max_tokens value via:
-    1. Environment variable: MAX_TOKENS_OVERRIDE
+    You can configure the default custom_max_token value via:
+    1. Environment variable: CUSTOM_MAX_TOKEN_DEFAULT
     2. Default value in the code
     """
 
-    def __init__(self, default_max_tokens: Optional[int] = None):
+    def __init__(self, default_custom_max_token: Optional[int] = None):
         """
         Initialize the handler.
 
         Args:
-            default_max_tokens: Default max_tokens value to use if not set via environment
+            default_custom_max_token: Default custom_max_token value to use if not set via environment
         """
         super().__init__()
-        # Get max_tokens from environment or use default
-        self.max_tokens = int(os.getenv("MAX_TOKENS_OVERRIDE", default_max_tokens or 2048))
-        print(f"MaxTokensModifier initialized with max_tokens={self.max_tokens}")
+        # Get custom_max_token default from environment or use default
+        self.default_custom_max_token = int(os.getenv("CUSTOM_MAX_TOKEN_DEFAULT", default_custom_max_token or 2048))
+        print(f"MaxTokensModifier initialized with default custom_max_token={self.default_custom_max_token}")
 
     async def async_pre_call_hook(
         self,
@@ -47,7 +47,7 @@ class MaxTokensModifier(CustomLogger):
     ):
         """
         Hook called before making LLM API calls.
-        Modifies the max_tokens parameter in the request data.
+        Reads custom_max_token from request and sets max_tokens.
 
         Args:
             user_api_key_dict: User authentication information
@@ -56,16 +56,19 @@ class MaxTokensModifier(CustomLogger):
             call_type: Type of API call being made
 
         Returns:
-            Modified data dictionary with updated max_tokens
+            Modified data dictionary with max_tokens set from custom_max_token
         """
         # Only modify completion requests (not embeddings, etc.)
         if call_type in ["completion", "text_completion"]:
+            # Get custom_max_token from request, or use default
+            custom_max_token = data.pop("custom_max_token", self.default_custom_max_token)
             original_max_tokens = data.get("max_tokens")
 
-            # Replace max_tokens with our configured value
-            data["max_tokens"] = self.max_tokens
+            # Set max_tokens from custom_max_token
+            data["max_tokens"] = custom_max_token
 
-            print(f"Modified max_tokens: {original_max_tokens} -> {self.max_tokens}")
+            print(f"Applied custom_max_token: {custom_max_token}")
+            print(f"Original max_tokens: {original_max_tokens} -> New max_tokens: {custom_max_token}")
             print(f"Request data: model={data.get('model')}, max_tokens={data.get('max_tokens')}")
 
         return data
@@ -74,24 +77,24 @@ class MaxTokensModifier(CustomLogger):
 # Example: Custom handler with different strategies
 class ConditionalMaxTokensModifier(CustomLogger):
     """
-    Advanced handler that modifies max_tokens based on conditions.
+    Advanced handler that reads custom_max_token and applies conditional logic.
     Examples:
-    - Different max_tokens for different models
-    - Different max_tokens for different users
-    - Respect original max_tokens if within limits
+    - Different defaults for different models
+    - Cap custom_max_token to prevent excessive values
+    - Apply model-specific limits
     """
 
     def __init__(self):
         super().__init__()
-        # Configure max_tokens per model
-        self.model_max_tokens = {
+        # Configure default custom_max_token per model
+        self.model_custom_max_tokens = {
             "gpt-4": 4096,
             "gpt-3.5-turbo": 2048,
             "claude-3-opus": 4096,
             "claude-3-sonnet": 4096,
             "claude-3-haiku": 4096,
         }
-        self.default_max_tokens = 2048
+        self.default_custom_max_token = 2048
         self.max_allowed_tokens = 8192  # Maximum limit
 
     async def async_pre_call_hook(
@@ -109,7 +112,7 @@ class ConditionalMaxTokensModifier(CustomLogger):
         ]
     ):
         """
-        Conditionally modify max_tokens based on model and constraints.
+        Conditionally process custom_max_token based on model and constraints.
         """
         if call_type not in ["completion", "text_completion"]:
             return data
@@ -117,23 +120,24 @@ class ConditionalMaxTokensModifier(CustomLogger):
         model = data.get("model", "")
         original_max_tokens = data.get("max_tokens")
 
-        # Strategy 1: Use model-specific max_tokens
+        # Strategy 1: Use model-specific default custom_max_token
         # Find matching model configuration
-        configured_max_tokens = self.default_max_tokens
-        for model_prefix, max_tokens in self.model_max_tokens.items():
+        configured_custom_max_token = self.default_custom_max_token
+        for model_prefix, custom_max_token in self.model_custom_max_tokens.items():
             if model_prefix in model:
-                configured_max_tokens = max_tokens
+                configured_custom_max_token = custom_max_token
                 break
 
-        # Strategy 2: If original max_tokens is set, respect it but cap at max_allowed
-        if original_max_tokens:
-            new_max_tokens = min(original_max_tokens, self.max_allowed_tokens)
-        else:
-            new_max_tokens = configured_max_tokens
+        # Strategy 2: Get custom_max_token from request, or use model-specific default
+        custom_max_token = data.pop("custom_max_token", configured_custom_max_token)
 
-        data["max_tokens"] = new_max_tokens
+        # Strategy 3: Cap at max_allowed to prevent excessive values
+        final_max_tokens = min(custom_max_token, self.max_allowed_tokens)
+
+        data["max_tokens"] = final_max_tokens
 
         print(f"ConditionalMaxTokensModifier: model={model}, "
-              f"original={original_max_tokens}, new={new_max_tokens}")
+              f"custom_max_token={custom_max_token}, final_max_tokens={final_max_tokens}, "
+              f"original_max_tokens={original_max_tokens}")
 
         return data

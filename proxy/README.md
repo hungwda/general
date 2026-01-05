@@ -1,25 +1,26 @@
-# LiteLLM Proxy with Max Tokens Modifier
+# LiteLLM Proxy with custom_max_token Support
 
-This solution provides a custom LiteLLM proxy setup that allows you to replace/modify the `max_tokens` parameter in requests before they are sent to LLM providers.
+This solution provides a custom LiteLLM proxy setup that allows you to use a `custom_max_token` parameter in requests, which will be used to set the `max_tokens` value sent to LLM providers.
 
 ## Overview
 
-The solution uses LiteLLM's custom callback system with the `async_pre_call_hook` to intercept and modify requests before they reach the LLM provider. This allows you to:
+The solution uses LiteLLM's custom callback system with the `async_pre_call_hook` to intercept requests before they reach the LLM provider. This allows you to:
 
-- Override `max_tokens` for all requests
-- Set different `max_tokens` based on the model
-- Cap `max_tokens` to prevent excessive costs
-- Conditionally modify requests based on user, model, or other criteria
+- Use `custom_max_token` parameter in requests to control `max_tokens`
+- Set different default `custom_max_token` based on the model
+- Cap `custom_max_token` to prevent excessive costs
+- Apply conditional logic based on user, model, or other criteria
 
 ## Files
 
-- **custom_handler.py**: Contains custom callback handlers for modifying max_tokens
-  - `MaxTokensModifier`: Simple handler that replaces max_tokens with a configured value
-  - `ConditionalMaxTokensModifier`: Advanced handler with model-specific and conditional logic
+- **custom_handler.py**: Contains custom callback handlers for processing custom_max_token
+  - `MaxTokensModifier`: Simple handler that reads custom_max_token and sets max_tokens
+  - `ConditionalMaxTokensModifier`: Advanced handler with model-specific defaults and conditional logic
 - **proxy_config.yaml**: LiteLLM proxy configuration file
 - **requirements.txt**: Python dependencies
 - **.env.example**: Example environment variables configuration
 - **start_proxy.sh**: Shell script to start the proxy server
+- **test_proxy.py**: Test script demonstrating usage
 
 ## Installation
 
@@ -43,7 +44,7 @@ Edit `.env` and add your API keys:
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 LITELLM_MASTER_KEY=your_master_key_here
-MAX_TOKENS_OVERRIDE=2048
+CUSTOM_MAX_TOKEN_DEFAULT=2048
 ```
 
 ### 3. Configure the Proxy
@@ -66,7 +67,7 @@ Edit `proxy_config.yaml` to:
 #### Option 2: Run directly
 
 ```bash
-export MAX_TOKENS_OVERRIDE=2048
+export CUSTOM_MAX_TOKEN_DEFAULT=2048
 litellm --config proxy_config.yaml --port 4000
 ```
 
@@ -89,12 +90,14 @@ client = openai.OpenAI(
 response = client.chat.completions.create(
     model="gpt-3.5-turbo",
     messages=[{"role": "user", "content": "Hello!"}],
-    # max_tokens will be replaced by the custom handler
-    max_tokens=1000  # This will be overridden to MAX_TOKENS_OVERRIDE value
+    # Use custom_max_token to control max_tokens
+    custom_max_token=1000  # This will be used to set max_tokens
 )
 
 print(response.choices[0].message.content)
 ```
+
+**Note**: If `custom_max_token` is not specified, the handler will use the default value from `CUSTOM_MAX_TOKEN_DEFAULT` environment variable.
 
 #### Using cURL
 
@@ -105,7 +108,7 @@ curl http://localhost:4000/chat/completions \
   -d '{
     "model": "gpt-3.5-turbo",
     "messages": [{"role": "user", "content": "Hello!"}],
-    "max_tokens": 1000
+    "custom_max_token": 1000
   }'
 ```
 
@@ -113,30 +116,33 @@ curl http://localhost:4000/chat/completions \
 
 ### MaxTokensModifier
 
-Simple handler that replaces all `max_tokens` values with a configured value.
+Simple handler that reads `custom_max_token` from requests and uses it to set `max_tokens`.
 
 **Configuration:**
-- Set via `MAX_TOKENS_OVERRIDE` environment variable (default: 2048)
+- Set default via `CUSTOM_MAX_TOKEN_DEFAULT` environment variable (default: 2048)
 - Or modify the default in `custom_handler.py`
 
 **Behavior:**
-- Replaces `max_tokens` for all completion requests
-- Ignores embeddings and other request types
+- Reads `custom_max_token` from request data
+- If not provided, uses the configured default value
+- Sets `max_tokens` with the custom_max_token value
+- Only processes completion requests (ignores embeddings, etc.)
 
 ### ConditionalMaxTokensModifier
 
-Advanced handler with conditional logic.
+Advanced handler with conditional logic and model-specific defaults.
 
 **Features:**
-- Model-specific max_tokens (different values for GPT-4, Claude, etc.)
-- Respects original max_tokens if set, but caps at a maximum limit
-- Configurable per-model limits
+- Model-specific default `custom_max_token` values (different for GPT-4, Claude, etc.)
+- Reads `custom_max_token` from request or uses model-specific default
+- Caps final value at maximum limit to prevent excessive costs
+- Configurable per-model defaults
 
 **Configuration:**
-Edit the `model_max_tokens` dictionary in `custom_handler.py`:
+Edit the `model_custom_max_tokens` dictionary in `custom_handler.py`:
 
 ```python
-self.model_max_tokens = {
+self.model_custom_max_tokens = {
     "gpt-4": 4096,
     "gpt-3.5-turbo": 2048,
     "claude-3-opus": 4096,
@@ -171,18 +177,21 @@ class MyCustomHandler(CustomLogger):
     async def async_pre_call_hook(self, user_api_key_dict, cache, data, call_type):
         # Your custom logic here
         if call_type in ["completion", "text_completion"]:
-            # Modify data["max_tokens"] based on your requirements
-            data["max_tokens"] = calculate_max_tokens(data)
+            # Get custom_max_token from request
+            custom_max_token = data.pop("custom_max_token", 2048)
+            # Apply your custom logic
+            data["max_tokens"] = calculate_max_tokens(custom_max_token, data)
         return data
 ```
 
 ### Use Cases
 
-1. **Cost Control**: Cap max_tokens to prevent expensive requests
-2. **Model-Specific Limits**: Set appropriate limits for different models
-3. **User-Based Limits**: Different max_tokens for different user tiers
-4. **Dynamic Adjustment**: Calculate max_tokens based on input length
-5. **Compliance**: Ensure requests meet specific requirements
+1. **Custom Parameter**: Use `custom_max_token` as an alternative to `max_tokens` for clearer intent
+2. **Cost Control**: Cap `custom_max_token` to prevent expensive requests
+3. **Model-Specific Defaults**: Set appropriate defaults for different models
+4. **User-Based Limits**: Different `custom_max_token` values for different user tiers
+5. **Dynamic Adjustment**: Calculate final max_tokens based on custom_max_token and other factors
+6. **Compliance**: Ensure requests meet specific requirements
 
 ## Troubleshooting
 
@@ -192,17 +201,18 @@ class MyCustomHandler(CustomLogger):
 - Check that `custom_handler.py` is in the correct location
 - Verify Python can import the module (`python -c "from custom_handler import MaxTokensModifier"`)
 
-### Max Tokens Not Being Modified
+### custom_max_token Not Being Applied
 
-- Check the console output for "Modified max_tokens" logs
-- Ensure you're making completion requests (not embeddings, etc.)
-- Verify the `call_type` is being handled in your custom hook
+- Check the console output for "Applied custom_max_token" logs
+- Ensure you're passing `custom_max_token` in your request
+- Verify you're making completion requests (not embeddings, etc.)
+- Check the `call_type` is being handled in your custom hook
 
 ### Environment Variables Not Loading
 
 - Ensure `.env` file exists in the proxy directory
 - Check that environment variables are exported before running litellm
-- Use `echo $MAX_TOKENS_OVERRIDE` to verify the variable is set
+- Use `echo $CUSTOM_MAX_TOKEN_DEFAULT` to verify the variable is set
 
 ## Advanced Configuration
 

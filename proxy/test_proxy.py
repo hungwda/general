@@ -1,8 +1,8 @@
 """
-Test script for LiteLLM Proxy with Max Tokens Modifier
+Test script for LiteLLM Proxy with custom_max_token Support
 
 This script demonstrates how to interact with the LiteLLM proxy
-and verify that max_tokens is being modified correctly.
+and verify that custom_max_token is being processed correctly.
 """
 
 import os
@@ -15,17 +15,17 @@ client = OpenAI(
 )
 
 
-def test_max_tokens_override():
+def test_custom_max_token():
     """
-    Test that max_tokens is being overridden by the custom handler.
+    Test that custom_max_token is being processed by the custom handler.
     """
     print("=" * 80)
-    print("Testing Max Tokens Override")
+    print("Testing custom_max_token Support")
     print("=" * 80)
 
-    # Test 1: Request with max_tokens=100 (should be overridden)
-    print("\nTest 1: Sending request with max_tokens=100")
-    print("Expected: Should be overridden to MAX_TOKENS_OVERRIDE value")
+    # Test 1: Request with custom_max_token=100
+    print("\nTest 1: Sending request with custom_max_token=100")
+    print("Expected: Should set max_tokens to 100")
 
     try:
         response = client.chat.completions.create(
@@ -33,7 +33,7 @@ def test_max_tokens_override():
             messages=[
                 {"role": "user", "content": "Say 'Hello, World!' and nothing else."}
             ],
-            max_tokens=100  # This should be overridden
+            extra_body={"custom_max_token": 100}  # Use extra_body for custom parameters
         )
 
         print(f"Response: {response.choices[0].message.content}")
@@ -42,9 +42,9 @@ def test_max_tokens_override():
     except Exception as e:
         print(f"✗ Test 1 failed: {e}")
 
-    # Test 2: Request without max_tokens
-    print("\nTest 2: Sending request without max_tokens")
-    print("Expected: Should use MAX_TOKENS_OVERRIDE value")
+    # Test 2: Request without custom_max_token
+    print("\nTest 2: Sending request without custom_max_token")
+    print("Expected: Should use CUSTOM_MAX_TOKEN_DEFAULT value")
 
     try:
         response = client.chat.completions.create(
@@ -52,7 +52,7 @@ def test_max_tokens_override():
             messages=[
                 {"role": "user", "content": "Count from 1 to 5."}
             ]
-            # No max_tokens specified
+            # No custom_max_token specified
         )
 
         print(f"Response: {response.choices[0].message.content}")
@@ -61,9 +61,9 @@ def test_max_tokens_override():
     except Exception as e:
         print(f"✗ Test 2 failed: {e}")
 
-    # Test 3: Request with very high max_tokens
-    print("\nTest 3: Sending request with max_tokens=10000")
-    print("Expected: Should be overridden or capped depending on handler")
+    # Test 3: Request with very high custom_max_token
+    print("\nTest 3: Sending request with custom_max_token=10000")
+    print("Expected: Should be capped at max_allowed if using ConditionalMaxTokensModifier")
 
     try:
         response = client.chat.completions.create(
@@ -71,7 +71,7 @@ def test_max_tokens_override():
             messages=[
                 {"role": "user", "content": "What is 2+2?"}
             ],
-            max_tokens=10000  # Very high value
+            extra_body={"custom_max_token": 10000}  # Very high value
         )
 
         print(f"Response: {response.choices[0].message.content}")
@@ -83,16 +83,17 @@ def test_max_tokens_override():
 
 def test_different_models():
     """
-    Test max_tokens override with different models (if using ConditionalMaxTokensModifier).
+    Test custom_max_token with different models (if using ConditionalMaxTokensModifier).
     """
     print("\n" + "=" * 80)
-    print("Testing Different Models")
+    print("Testing Different Models with custom_max_token")
     print("=" * 80)
 
     models_to_test = ["gpt-3.5-turbo", "gpt-4"]
 
     for model in models_to_test:
         print(f"\nTesting model: {model}")
+        print("Testing with custom_max_token=500")
 
         try:
             response = client.chat.completions.create(
@@ -100,7 +101,7 @@ def test_different_models():
                 messages=[
                     {"role": "user", "content": "Hello!"}
                 ],
-                max_tokens=500
+                extra_body={"custom_max_token": 500}
             )
 
             print(f"Response: {response.choices[0].message.content}")
@@ -115,7 +116,7 @@ def main():
     """
     Main test function.
     """
-    print("LiteLLM Proxy Max Tokens Test")
+    print("LiteLLM Proxy custom_max_token Test")
     print("Make sure the proxy is running on http://localhost:4000")
     print("")
 
@@ -126,12 +127,12 @@ def main():
         print("")
 
     # Run tests
-    test_max_tokens_override()
+    test_custom_max_token()
     test_different_models()
 
     print("\n" + "=" * 80)
     print("Tests completed!")
-    print("Check the proxy server logs to see the max_tokens modifications")
+    print("Check the proxy server logs to see the custom_max_token processing")
     print("=" * 80)
 
 
